@@ -1,5 +1,5 @@
 """
-Django settings for backend project (ZAPPA + AWS LAMBDA READY)
+Django settings for backend project (RENDER.COM + SUPABASE + WHITENOISE)
 """
 
 from pathlib import Path
@@ -10,23 +10,21 @@ from datetime import timedelta
 # Build paths
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Load .env only in local dev
+# Load .env only in local development
 if os.path.exists(BASE_DIR / '.env'):
     from dotenv import load_dotenv
     load_dotenv()
 
-# SECURITY WARNING: Use env vars in production
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-fallback-key-change-in-prod')
+# SECURITY
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-fallback-change-in-prod')
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-# ALLOWED HOSTS for Zappa + API Gateway + CloudFront
+# ALLOWED HOSTS (Render + Vercel + Local)
 ALLOWED_HOSTS = [
     '127.0.0.1',
     'localhost',
-    '7x4sjuavwb.execute-api.ap-southeast-1.amazonaws.com',
-    'tgwjg1bdia.execute-api.ap-southeast-1.amazonaws.com',
-    '.execute-api.ap-southeast-1.amazonaws.com',
-    '.cloudfront.net',
+    '.onrender.com',
+    'sindalan-backend.onrender.com',
     'www.sinco.website',
     'sindalanconnect.vercel.app',
 ]
@@ -61,14 +59,15 @@ REST_FRAMEWORK = {
     ),
 }
 
-# MIDDLEWARE (CORS first!)
+# MIDDLEWARE
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # ← WHITENOISE
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    'accounts.middleware.CookieToAuthorizationMiddleware',  # Your custom middleware
+    'accounts.middleware.CookieToAuthorizationMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -78,7 +77,7 @@ ROOT_URLCONF = 'backend.urls'
 WSGI_APPLICATION = 'backend.wsgi.application'
 ASGI_APPLICATION = 'backend.asgi.application'
 
-# CHANNEL LAYERS (Use env var for Redis URL in prod)
+# CHANNEL LAYERS (Redis via env var)
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
@@ -88,8 +87,7 @@ CHANNEL_LAYERS = {
     },
 }
 
-# CORS SETTINGS
-CORS_ALLOW_ALL_ORIGINS = False  # Security: Explicitly allow
+# CORS
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
@@ -100,13 +98,13 @@ CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
 
-# Cookie security (Zappa uses HTTPS via API Gateway)
+# Cookie Security (HTTPS on Render)
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SAMESITE = 'Lax'
 
-# JWT Settings (Cookie-based)
+# JWT Settings
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
@@ -135,12 +133,12 @@ TEMPLATES = [
     },
 ]
 
-# DATABASE (Supabase via env var)
+# DATABASE (Supabase)
 DATABASES = {
     'default': dj_database_url.parse(
         os.getenv('DATABASE_URL'),
         conn_max_age=600,
-        ssl_require=True
+        ssl_require=not DEBUG  # SSL only in prod
     )
 }
 
@@ -154,14 +152,17 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'Asia/Manila'  # PH Timezone
+TIME_ZONE = 'Asia/Manila'  # PH Time
 USE_I18N = True
 USE_TZ = True
 
-# Static & Media
+# STATIC & MEDIA (RENDER + WHITENOISE)
 STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'  # ← FIXES collectstatic
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
